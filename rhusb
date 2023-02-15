@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+#
+# This file is part of rhusbd.
+#
+# rhusbd is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# rhusbd is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with rhusbd.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Commandline client for querying the latest measurement from rhusbd"""
+
+import datetime
+import json
+import os
+import sys
+import Pyro4
+from warwick.observatory.common import daemons, TFmt
+
+SCRIPT_NAME = os.path.basename(sys.argv[0])
+sys.excepthook = Pyro4.util.excepthook
+
+
+def run_command(command):
+    """Runs a daemon command, handling error messages"""
+    try:
+        ret = command(daemons.localhost_test)
+    except Pyro4.errors.CommunicationError:
+        print('error: unable to communicate with RHUSB daemon')
+        ret = -101
+
+    # Print message associated with error codes, except for -1 (error handled locally)
+    if ret not in [-1, -101, 0]:
+        print('error: Command failed with error', ret)
+    sys.exit(ret)
+
+
+def print_status(daemon):
+    """Prints the latest weather data in human-readable form"""
+    with daemon.connect() as rhusbd:
+        latest = rhusbd.last_measurement()
+
+    if latest is not None:
+        date = datetime.datetime.strptime(latest['date'], '%Y-%m-%dT%H:%M:%SZ')
+        print('Data received ' + TFmt.Bold + str(date) + TFmt.Clear + ':')
+        print('Temperature: ' + TFmt.Bold + '{:.1f}'.format(latest['temperature']) + '\u00B0C' + TFmt.Clear)
+        print('   Humidity: ' + TFmt.Bold + '{:.1f}'.format(latest['humidity']) + '%RH' + TFmt.Clear)
+        print()
+    else:
+        print('error: failed to query data')
+        return -1
+
+    return 0
+
+
+def print_json(daemon):
+    """Prints the latest environment data in machine-readable form"""
+    with daemon.connect() as rhusbd:
+        latest = rhusbd.last_measurement()
+    print(json.dumps(latest or {}))
+    return 0
+
+
+def print_usage():
+    """Prints the utility help"""
+    print('Usage: {} <command>'.format(SCRIPT_NAME))
+    print()
+    print('   status      print a human-readable summary of the RH-USB status')
+    print('   json        print a machine-readable summary of the RH-USB status')
+    print()
+
+    return 1
+
+
+if __name__ == '__main__':
+    commands = {
+        'status': print_status,
+        'json': print_json,
+    }
+
+    if len(sys.argv) == 2 and sys.argv[1] in commands:
+        sys.exit(run_command(commands[sys.argv[1]]))
+
+    sys.exit(print_usage())
