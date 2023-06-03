@@ -18,40 +18,40 @@
 """Commandline client for querying the latest measurement from rhusbd"""
 
 import datetime
+import glob
 import json
 import os
 import sys
 import Pyro4
-from warwick.observatory.common import daemons, TFmt
+from warwick.observatory.common import TFmt
+from warwick.observatory.rhusb import Config
 
 SCRIPT_NAME = os.path.basename(sys.argv[0])
 sys.excepthook = Pyro4.util.excepthook
 
 
-def run_command(command):
-    """Runs a daemon command, handling error messages"""
+def run_command(config_paths, sensor_id, command):
+    """Prints the message associated with a status code and returns the code"""
+    config = Config(config_paths[sensor_id])
     try:
-        ret = command(daemons.localhost_test)
+        ret = command(config)
     except Pyro4.errors.CommunicationError:
-        print('error: unable to communicate with RHUSB daemon')
-        ret = -101
+        print('error: unable to communicate with the RHUSB daemon')
+        ret = 1
 
-    # Print message associated with error codes, except for -1 (error handled locally)
-    if ret not in [-1, -101, 0]:
-        print('error: Command failed with error', ret)
-    sys.exit(ret)
+    return ret
 
 
-def print_status(daemon):
+def print_status(config):
     """Prints the latest weather data in human-readable form"""
-    with daemon.connect() as rhusbd:
+    with config.daemon.connect() as rhusbd:
         latest = rhusbd.last_measurement()
 
     if latest is not None:
         date = datetime.datetime.strptime(latest['date'], '%Y-%m-%dT%H:%M:%SZ')
-        print('Data received ' + TFmt.Bold + str(date) + TFmt.Clear + ':')
-        print('Temperature: ' + TFmt.Bold + '{:.1f}'.format(latest['temperature']) + '\u00B0C' + TFmt.Clear)
-        print('   Humidity: ' + TFmt.Bold + '{:.1f}'.format(latest['humidity']) + '%RH' + TFmt.Clear)
+        print(f'Data received {TFmt.Bold}{str(date)}{TFmt.Clear}:')
+        print(f'Temperature: {TFmt.Bold}{latest["temperature"]:.1f} \u00B0C{TFmt.Clear}')
+        print(f'   Humidity: {TFmt.Bold}{latest["humidity"]:.1f} %RH{TFmt.Clear}')
         print()
     else:
         print('error: failed to query data')
@@ -60,17 +60,17 @@ def print_status(daemon):
     return 0
 
 
-def print_json(daemon):
+def print_json(config):
     """Prints the latest environment data in machine-readable form"""
-    with daemon.connect() as rhusbd:
+    with config.daemon.connect() as rhusbd:
         latest = rhusbd.last_measurement()
     print(json.dumps(latest or {}))
     return 0
 
 
-def print_usage():
+def print_usage(config_paths):
     """Prints the utility help"""
-    print('Usage: {} <command>'.format(SCRIPT_NAME))
+    print(f'Usage: {SCRIPT_NAME} [{"|".join(sorted(config_paths.keys()))}] <command>')
     print()
     print('   status      print a human-readable summary of the RH-USB status')
     print('   json        print a machine-readable summary of the RH-USB status')
@@ -80,12 +80,28 @@ def print_usage():
 
 
 if __name__ == '__main__':
+    if 'RHUSBD_CONFIG_ROOT' in os.environ:
+        config_root = os.environ['RHUSBD_CONFIG_ROOT']
+    else:
+        config_root = '/etc/rhusbd'
+
+    configs = {os.path.basename(p)[:-5]: p for p in glob.glob(os.path.join(config_root, '*.json'))}
+    if not configs:
+        print('error: no configs were found in ' + config_root)
+        print('       run as RHUSBD_CONFIG_ROOT=/path/to/config/root ' + ' '.join(sys.argv))
+        print('       to specify the configuration root directory')
+        sys.exit(1)
+
+    if len(sys.argv) == 2 and sys.argv[1] == 'list-sensors':
+        print(' '.join(sorted(configs.keys())))
+        sys.exit(0)
+
     commands = {
         'status': print_status,
         'json': print_json,
     }
 
-    if len(sys.argv) == 2 and sys.argv[1] in commands:
-        sys.exit(run_command(commands[sys.argv[1]]))
+    if sys.argv[1] not in configs or sys.argv[2] not in commands:
+        sys.exit(print_usage(configs))
 
-    sys.exit(print_usage())
+    sys.exit(run_command(configs, sys.argv[1], commands[sys.argv[2]]))
