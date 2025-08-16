@@ -1,8 +1,0 @@
-{
-  "daemon": "warwick_rhusb",
-  "log_name": "rhusbd@warwick",
-  "serial_port": "/dev/rhusb",
-  "serial_baud": 9600,
-  "serial_timeout": 5,
-  "loop_delay": 5
-}

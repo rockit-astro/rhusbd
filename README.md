@@ -22,13 +22,12 @@ A configuration file is specified when launching the server, and the `rhusb` fro
 
 ### Initial Installation
 
-The automated packaging scripts will push 4 RPM packages to the observatory package repository:
+The automated packaging scripts will push 3 RPM packages to the observatory package repository:
 
 | Package                   | Description                                                                   |
 |---------------------------|-------------------------------------------------------------------------------|
 | rockit-rhusb-server       | Contains the `rhusbd` server and systemd service file.                        |
 | rockit-rhusb-client       | Contains the `rhusb` commandline utility for controlling the rhusb server.    |
-| rockit-rhusb-data-warwick | Contains the json configuration and udev rules for the Windmill Hill station. |
 | python3-rockit-rhusb      | Contains the python module with shared code.                                  |
 
 Alternatively, perform a local installation using `sudo make install`.
@@ -66,6 +65,6 @@ sudo systemctl restart rhusbd@<config>
 
 The server and client can be run directly from a git clone:
 ```
-./rhusbd ./warwick.json
-RHUSBD_CONFIG_PATH=./warwick.json ./rhusb status
+./rhusbd ./test.json
+RHUSBD_CONFIG_PATH=./test.json ./rhusb status
 ```
