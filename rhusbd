@@ -91,7 +91,7 @@ class RHUSBDaemon:
                     if humidity_match and temperature_match:
                         with self._lock:
                             self._latest = {
-                                'date': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+                                'date': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
                                 'temperature': float(temperature_match.group('temperature')),
                                 'humidity': float(humidity_match.group('humidity'))
                             }
