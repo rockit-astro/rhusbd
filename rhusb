@@ -23,7 +23,7 @@ import json
 import os
 import sys
 import Pyro4
-from rockit.common import TFmt
+from rockit.common import print
 from rockit.rhusb import Config
 
 SCRIPT_NAME = os.path.basename(sys.argv[0])
@@ -48,10 +48,9 @@ def print_status(config):
         latest = rhusbd.last_measurement()
 
     if latest is not None:
-        date = datetime.datetime.strptime(latest['date'], '%Y-%m-%dT%H:%M:%SZ')
-        print(f'Data received {TFmt.Bold}{str(date)}{TFmt.Clear}:')
-        print(f'Temperature: {TFmt.Bold}{latest["temperature"]:.1f} \u00B0C{TFmt.Clear}')
-        print(f'   Humidity: {TFmt.Bold}{latest["humidity"]:.1f} %RH{TFmt.Clear}')
+        print(f'Data received [b]{latest["date"]}[/b]:')
+        print(f'Temperature: [b]{latest["temperature"]:.1f} \u00B0C[/b]')
+        print(f'   Humidity: [b]{latest["humidity"]:.1f} %RH[/b]')
         print()
     else:
         print('error: failed to query data')
