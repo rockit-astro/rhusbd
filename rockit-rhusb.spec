@@ -1,6 +1,6 @@
 Name:      rockit-rhusb
 Version:   %{_version}
-Release:   1
+Release:   1%{dist}
 Summary:   Temperature and humidity probe
 Url:       https://github.com/rockit-astro/rhusbd
 License:   GPL-3.0
